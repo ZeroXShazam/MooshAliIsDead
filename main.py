@@ -2,11 +2,11 @@
 
 import logging
 
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
 from bot import extract_urls, process_link
-from config import TELEGRAM_BOT_TOKEN
+from config import REPO_URL, TELEGRAM_BOT_TOKEN
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -15,11 +15,52 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_start_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📖 How it works", callback_data="help")],
+        [InlineKeyboardButton("🔗 View source", url=REPO_URL)],
+    ])
+
+
 async def start(update: Update, _context) -> None:
     await update.message.reply_text(
         "👋 Hi! Send me any link and I'll analyze it with AI, then send you "
         "a full explanation with important pictures.\n\n"
-        "Just paste a URL and I'll do the rest!"
+        "Just paste a URL and I'll do the rest!",
+        reply_markup=get_start_keyboard(),
+    )
+
+
+async def help_command(update: Update, _context) -> None:
+    """Handle /help command."""
+    await update.message.reply_text(
+        "<b>How it works</b>\n\n"
+        "1️⃣ Send any http(s) link\n"
+        "2️⃣ Bot scrapes the page (text + images)\n"
+        "3️⃣ AI analyzes and summarizes the content\n"
+        "4️⃣ You get a formatted summary + key images\n\n"
+        "Supports: Gemini & Poe API",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔗 View source", url=REPO_URL)],
+        ]),
+    )
+
+
+async def help_callback(update: Update, _context) -> None:
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(
+        "<b>How it works</b>\n\n"
+        "1️⃣ Send any http(s) link\n"
+        "2️⃣ Bot scrapes the page (text + images)\n"
+        "3️⃣ AI analyzes and summarizes the content\n"
+        "4️⃣ You get a formatted summary + key images\n\n"
+        "Supports: Gemini & Poe API",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔗 View source", url=REPO_URL)],
+        ]),
     )
 
 
@@ -40,6 +81,8 @@ def main() -> None:
 
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CallbackQueryHandler(help_callback, pattern="^help$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot starting (polling)...")

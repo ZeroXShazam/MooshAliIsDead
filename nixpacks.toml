@@ -1,9 +1,4 @@
-# Railway / Nixpacks config for Python
-[phases.setup]
-nixPkgs = ["python311"]
-
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
-
+# Railway / Nixpacks auto-detects Pipfile and uses pipenv
+# Override only if needed
 [start]
 cmd = "python main.py"

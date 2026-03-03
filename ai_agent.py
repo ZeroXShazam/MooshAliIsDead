@@ -3,7 +3,7 @@
 import base64
 from dataclasses import dataclass
 
-from config import AI_PROVIDER, GEMINI_API_KEY, POE_API_KEY, POE_MODEL
+from config import AI_PROVIDER, GEMINI_API_KEY, GEMINI_MODEL, POE_API_KEY, POE_MODEL
 from scraper import ScrapedContent
 
 
@@ -14,6 +14,19 @@ class AnalysisResult:
     summary: str
     success: bool
     error: str | None = None
+
+
+def _guess_mime(img_bytes: bytes) -> str:
+    """Detect image MIME type from magic bytes."""
+    if img_bytes[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if img_bytes[:2] == b"\xff\xd8":
+        return "image/jpeg"
+    if img_bytes[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if img_bytes[:4] == b"RIFF" and img_bytes[8:12] == b"WEBP":
+        return "image/webp"
+    return "image/jpeg"
 
 
 def _build_prompt(content: ScrapedContent) -> str:
@@ -32,8 +45,14 @@ Provide:
 3. Important details, facts, or data mentioned
 4. Any notable images described (we'll attach the actual images separately)
 
-Write in a friendly, informative tone. Be concise but thorough. Use bullet points where helpful.
-If the content is in another language, you may summarize in that language or in English - choose what fits best."""
+FORMATTING RULES (strict - your response will be sent to Telegram):
+- Use Telegram HTML format only. Allowed tags: <b>bold</b>, <i>italic</i>, <code>inline code</code>, <a href="URL">link</a>
+- For section headers use <b>Header</b>
+- For bullet lists use • or - (no markdown asterisks)
+- NEVER use: *, _, `, [, ] as formatting - they break Telegram
+- In regular text, escape: & as &amp;  < as &lt;  > as &gt;
+- Keep it clean and readable. Be concise but thorough.
+- If content is in another language, summarize in that language or English."""
 
 
 def _analyze_with_gemini(content: ScrapedContent) -> AnalysisResult:
@@ -49,17 +68,21 @@ def _analyze_with_gemini(content: ScrapedContent) -> AnalysisResult:
 
     try:
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(GEMINI_MODEL)
         prompt = _build_prompt(content)
 
         if content.images:
             parts = [prompt]
             for _img_url, img_bytes in content.images:
-                parts.append({
-                    "mime_type": "image/jpeg",
-                    "data": img_bytes,
-                })
-            response = model.generate_content(parts)
+                mime = _guess_mime(img_bytes)
+                parts.append({"mime_type": mime, "data": img_bytes})
+            try:
+                response = model.generate_content(parts)
+            except Exception as img_err:
+                if "Unable to process input image" in str(img_err) or "400" in str(img_err):
+                    response = model.generate_content(prompt)
+                else:
+                    raise img_err
         else:
             response = model.generate_content(prompt)
 

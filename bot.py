@@ -3,8 +3,8 @@
 import re
 from io import BytesIO
 
-from telegram import Bot, InputMediaPhoto
-from telegram.error import TelegramError
+from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
+from telegram.error import BadRequest, TelegramError
 
 from ai_agent import analyze_content
 from config import IMAGE_MAX_SIZE_KB, MAX_CONTENT_LENGTH, MAX_IMAGES
@@ -59,7 +59,16 @@ async def process_link(bot: Bot, chat_id: int, url: str) -> None:
     if len(summary) > 4000:
         summary = summary[:3997] + "..."
 
-    await bot.send_message(chat_id, f"📄 **{content.title}**\n\n{summary}", parse_mode="Markdown")
+    # Escape HTML in title for Telegram parse_mode
+    title_safe = content.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    msg = f"📄 <b>{title_safe}</b>\n\n{summary}"
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔗 View source", url=content.url)],
+    ])
+    try:
+        await bot.send_message(chat_id, msg, parse_mode="HTML", reply_markup=keyboard)
+    except BadRequest:
+        await bot.send_message(chat_id, f"📄 {content.title}\n\n{summary}", reply_markup=keyboard)
 
     # Send images if we have them
     if content.images:
