@@ -8,7 +8,7 @@ Send a link to this bot and get an AI-powered full explanation with important pi
 
 ### Deploy on Railway (recommended)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?repository=https://github.com/YOUR_USERNAME/TelegramBrowser)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?repository=https://github.com/ZeroXShazam/MooshAliIsDead)
 
 1. Click the button and connect your GitHub repo
 2. Add environment variables in Railway dashboard
@@ -16,19 +16,17 @@ Send a link to this bot and get an AI-powered full explanation with important pi
 
 ### Deploy on Vercel
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/TelegramBrowser)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ZeroXShazam/MooshAliIsDead)
 
 1. Import your repo and add environment variables
 2. Deploy
 3. **Set webhook:** Visit `https://your-app.vercel.app/api/setup_webhook`
 
-> Replace `YOUR_USERNAME` with your GitHub username in the deploy URLs.
-
 ## Quick Start (Local)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/TelegramBrowser.git
-cd TelegramBrowser
+git clone https://github.com/ZeroXShazam/MooshAliIsDead.git
+cd MooshAliIsDead
 pipenv install
 cp .env.example .env   # Edit with your keys
 pipenv run python main.py

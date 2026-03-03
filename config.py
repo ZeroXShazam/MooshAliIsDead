@@ -37,4 +37,4 @@ MAX_IMAGES = 5  # max images to include in analysis
 IMAGE_MAX_SIZE_KB = 500  # skip images larger than this
 
 # Repo URL for bot buttons (replace with your GitHub repo)
-REPO_URL = get_env("REPO_URL", "https://github.com/YOUR_USERNAME/TelegramBrowser")
+REPO_URL = get_env("REPO_URL", "https://github.com/ZeroXShazam/MooshAliIsDead")
