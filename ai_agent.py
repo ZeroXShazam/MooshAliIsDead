@@ -134,6 +134,88 @@ def _analyze_with_poe(content: ScrapedContent) -> AnalysisResult:
         return AnalysisResult(summary="", success=False, error=f"Poe failed: {str(e)}")
 
 
+def _build_followup_prompt(url: str, title: str, content: ScrapedContent, summary: str, question: str) -> str:
+    """Build prompt for follow-up questions."""
+    return f"""You are a helpful assistant. The user previously analyzed this webpage:
+
+URL: {url}
+Title: {title}
+
+Previous summary you gave:
+{summary}
+
+Page content (excerpt):
+{content.text[:8000]}
+
+The user now asks: {question}
+
+Answer based on the page content and your previous summary. Be concise. Use Telegram HTML if helpful: <b>, <i>, <code>, <a href="">. Escape & < > in plain text."""
+
+
+def chat(message: str) -> AnalysisResult:
+    """General chat - no page context. User can start conversation with anything."""
+    prompt = f"""You are a friendly AI assistant in a Telegram bot. The bot can also analyze web links when the user sends a URL.
+
+The user says: {message}
+
+Respond naturally. If they're greeting or asking what you do, be helpful and mention you can analyze links. Use Telegram HTML if helpful: <b>, <i>, <code>. Escape & < > in plain text. Keep responses concise."""
+
+    if AI_PROVIDER == "poe":
+        return _answer_followup_poe(prompt)
+    return _answer_followup_gemini(prompt)
+
+
+def answer_followup(
+    url: str, title: str, content: ScrapedContent, summary: str, question: str
+) -> AnalysisResult:
+    """Answer a follow-up question about a previously analyzed page."""
+    if not content.success:
+        return AnalysisResult(summary="", success=False, error="No context available.")
+
+    prompt = _build_followup_prompt(url, title, content, summary, question)
+
+    if AI_PROVIDER == "poe":
+        return _answer_followup_poe(prompt)
+    return _answer_followup_gemini(prompt)
+
+
+def _answer_followup_gemini(prompt: str) -> AnalysisResult:
+    import google.generativeai as genai
+
+    if not GEMINI_API_KEY:
+        return AnalysisResult(summary="", success=False, error="GEMINI_API_KEY not configured.")
+
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel(GEMINI_MODEL)
+        response = model.generate_content(prompt)
+        if not response.text:
+            return AnalysisResult(summary="", success=False, error="Empty response.")
+        return AnalysisResult(summary=response.text.strip(), success=True)
+    except Exception as e:
+        return AnalysisResult(summary="", success=False, error=f"Failed: {str(e)}")
+
+
+def _answer_followup_poe(prompt: str) -> AnalysisResult:
+    from openai import OpenAI
+
+    if not POE_API_KEY:
+        return AnalysisResult(summary="", success=False, error="POE_API_KEY not configured.")
+
+    try:
+        client = OpenAI(api_key=POE_API_KEY, base_url="https://api.poe.com/v1")
+        chat = client.chat.completions.create(
+            model=POE_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = chat.choices[0].message.content
+        if not text:
+            return AnalysisResult(summary="", success=False, error="Empty response.")
+        return AnalysisResult(summary=text.strip(), success=True)
+    except Exception as e:
+        return AnalysisResult(summary="", success=False, error=f"Failed: {str(e)}")
+
+
 def analyze_content(content: ScrapedContent) -> AnalysisResult:
     """
     Analyze scraped webpage content using the configured AI provider (Gemini or Poe).

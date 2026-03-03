@@ -54,6 +54,8 @@ pipenv run python main.py
 2. Bot scrapes the page (title, text, images)
 3. AI (Gemini or Poe) analyzes the content
 4. You get a formatted summary + key images + buttons
+5. **Ask follow-up questions** — the bot remembers the page context
+6. Use `/new` or "New link" button to start fresh
 
 ## Documentation
 

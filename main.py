@@ -5,8 +5,9 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
-from bot import extract_urls, process_link
+from bot import extract_urls, process_followup, process_link
 from config import REPO_URL, TELEGRAM_BOT_TOKEN
+from conversation import clear_context
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -24,9 +25,9 @@ def get_start_keyboard() -> InlineKeyboardMarkup:
 
 async def start(update: Update, _context) -> None:
     await update.message.reply_text(
-        "👋 Hi! Send me any link and I'll analyze it with AI, then send you "
-        "a full explanation with important pictures.\n\n"
-        "Just paste a URL and I'll do the rest!",
+        "👋 Hi! Chat with me anytime, or send a link and I'll analyze it with AI.\n\n"
+        "💬 I can answer questions, analyze web pages, and remember context.\n"
+        "Use /new to clear page context.",
         reply_markup=get_start_keyboard(),
     )
 
@@ -39,12 +40,30 @@ async def help_command(update: Update, _context) -> None:
         "2️⃣ Bot scrapes the page (text + images)\n"
         "3️⃣ AI analyzes and summarizes the content\n"
         "4️⃣ You get a formatted summary + key images\n\n"
+        "💬 Chat anytime, or ask follow-ups about the last page.\n"
+        "/new — clear page context\n\n"
         "Supports: Gemini & Poe API",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
             [InlineKeyboardButton("🔗 View source", url=REPO_URL)],
         ]),
     )
+
+
+async def new_command(update: Update, _context) -> None:
+    """Clear page context and start fresh."""
+    clear_context(update.effective_chat.id)
+    await update.message.reply_text("🆕 Page context cleared. Chat or send a new link!")
+
+
+async def new_link_callback(update: Update, context) -> None:
+    query = update.callback_query
+    await query.answer()
+    clear_context(update.effective_chat.id)
+    try:
+        await query.edit_message_text("🆕 Page context cleared. Chat or send a new link!")
+    except Exception:
+        await context.bot.send_message(update.effective_chat.id, "🆕 Page context cleared. Chat or send a new link!")
 
 
 async def help_callback(update: Update, _context) -> None:
@@ -56,6 +75,8 @@ async def help_callback(update: Update, _context) -> None:
         "2️⃣ Bot scrapes the page (text + images)\n"
         "3️⃣ AI analyzes and summarizes the content\n"
         "4️⃣ You get a formatted summary + key images\n\n"
+        "💬 Chat anytime, or ask follow-ups about the last page.\n"
+        "/new — clear page context\n\n"
         "Supports: Gemini & Poe API",
         parse_mode="HTML",
         reply_markup=InlineKeyboardMarkup([
@@ -65,14 +86,16 @@ async def help_callback(update: Update, _context) -> None:
 
 
 async def handle_message(update: Update, context) -> None:
-    urls = extract_urls(update.message.text or "")
-    if not urls:
-        await update.message.reply_text(
-            "Please send a valid link (e.g. https://example.com)"
-        )
-        return
-    for url in urls:
-        await process_link(context.bot, update.effective_chat.id, url)
+    text = (update.message.text or "").strip()
+    urls = extract_urls(text)
+
+    if urls:
+        for url in urls:
+            await process_link(context.bot, update.effective_chat.id, url)
+    elif text:
+        await process_followup(context.bot, update.effective_chat.id, text)
+    else:
+        await update.message.reply_text("Send a message or link to get started.")
 
 
 def main() -> None:
@@ -82,7 +105,9 @@ def main() -> None:
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_command))
+    app.add_handler(CommandHandler("new", new_command))
     app.add_handler(CallbackQueryHandler(help_callback, pattern="^help$"))
+    app.add_handler(CallbackQueryHandler(new_link_callback, pattern="^new_link$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     logger.info("Bot starting (polling)...")

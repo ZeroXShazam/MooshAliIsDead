@@ -6,8 +6,9 @@ from io import BytesIO
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto
 from telegram.error import BadRequest, TelegramError
 
-from ai_agent import analyze_content
+from ai_agent import analyze_content, answer_followup, chat
 from config import IMAGE_MAX_SIZE_KB, MAX_CONTENT_LENGTH, MAX_IMAGES
+from conversation import clear_context, get_context, set_context
 from scraper import scrape_url
 
 
@@ -59,16 +60,20 @@ async def process_link(bot: Bot, chat_id: int, url: str) -> None:
     if len(summary) > 4000:
         summary = summary[:3997] + "..."
 
+    # Store context for follow-up questions
+    set_context(chat_id, content.url, content.title, content, summary)
+
     # Escape HTML in title for Telegram parse_mode
     title_safe = content.title.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    msg = f"📄 <b>{title_safe}</b>\n\n{summary}"
+    msg = f"📄 <b>{title_safe}</b>\n\n{summary}\n\n💬 <i>Ask me anything about this page — I remember the context.</i>"
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("🔗 View source", url=content.url)],
+        [InlineKeyboardButton("🆕 New link", callback_data="new_link")],
     ])
     try:
         await bot.send_message(chat_id, msg, parse_mode="HTML", reply_markup=keyboard)
     except BadRequest:
-        await bot.send_message(chat_id, f"📄 {content.title}\n\n{summary}", reply_markup=keyboard)
+        await bot.send_message(chat_id, f"📄 {content.title}\n\n{summary}\n\n💬 Ask me anything about this page.", reply_markup=keyboard)
 
     # Send images if we have them
     if content.images:
@@ -80,6 +85,41 @@ async def process_link(bot: Bot, chat_id: int, url: str) -> None:
             try:
                 await bot.send_media_group(chat_id=chat_id, media=media)
             except TelegramError:
-                # Fallback: send first image only
-                if content.images:
+                try:
                     await bot.send_photo(chat_id=chat_id, photo=BytesIO(content.images[0][1]))
+                except TelegramError:
+                    pass  # Skip images if Telegram can't process them
+
+
+async def process_followup(bot: Bot, chat_id: int, message: str) -> None:
+    """Answer: follow-up about last page if context exists, else general chat."""
+    ctx = get_context(chat_id)
+
+    status_msg = await bot.send_message(chat_id, "🤔 Thinking...")
+
+    if ctx:
+        result = answer_followup(
+            ctx.url, ctx.title, ctx.content, ctx.summary, message.strip()
+        )
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("🔗 View source", url=ctx.url)],
+            [InlineKeyboardButton("🆕 New link", callback_data="new_link")],
+        ])
+    else:
+        result = chat(message.strip())
+        keyboard = None
+
+    try:
+        await status_msg.delete()
+    except TelegramError:
+        pass
+
+    if not result.success:
+        await bot.send_message(chat_id, f"❌ {result.error}")
+        return
+
+    text = result.summary[:4000] + "..." if len(result.summary) > 4000 else result.summary
+    try:
+        await bot.send_message(chat_id, text, parse_mode="HTML", reply_markup=keyboard)
+    except BadRequest:
+        await bot.send_message(chat_id, text, reply_markup=keyboard)

@@ -1,6 +1,6 @@
 # Telegram Link Analyzer Bot — Guide & Reference
 
-A Telegram bot that analyzes web links with AI and returns summaries with key images.
+A Telegram bot that analyzes web links with AI and returns summaries with key images. **Conversational** — ask follow-up questions about the page; the bot remembers context.
 
 ## Quick Start
 
@@ -18,10 +18,10 @@ A Telegram bot that analyzes web links with AI and returns summaries with key im
 └─────────────┘     └──────────────┘     └─────────────┘     └──────────────┘
                             │                    │
                             │                    ▼
-                            │             ┌─────────────┐
-                            │             │  scraper.py  │
-                            │             │  (fetch URL) │
-                            │             └─────────────┘
+                            │             ┌─────────────┐     ┌──────────────────┐
+                            │             │  scraper.py  │     │  conversation.py │
+                            │             │  (fetch URL) │     │  (context store)  │
+                            │             └─────────────┘     └──────────────────┘
                             ▼
                     ┌──────────────┐
                     │  config.py   │
@@ -34,7 +34,8 @@ A Telegram bot that analyzes web links with AI and returns summaries with key im
 | File | Purpose |
 |------|---------|
 | `main.py` | Entry point, Telegram handlers (start, messages, callbacks) |
-| `bot.py` | Link processing: scrape → analyze → send (with buttons) |
+| `bot.py` | Link processing + follow-up answers (with buttons) |
+| `conversation.py` | In-memory context store per chat |
 | `ai_agent.py` | AI integration: Gemini & Poe, prompt building |
 | `scraper.py` | Web scraping: extract text + images from URLs |
 | `config.py` | Environment variables, model fallbacks |
@@ -49,10 +50,13 @@ A Telegram bot that analyzes web links with AI and returns summaries with key im
    - Sends "Fetching and analyzing..."
    - `scraper.scrape_url()` fetches page content + images
    - `ai_agent.analyze_content()` calls Gemini or Poe
-   - Sends summary (HTML) + images + "View source" button
-3. **Buttons**:
-   - `/start` → "How it works" + "View source" (repo)
-   - After result → "View source" (original URL)
+   - Stores context in `conversation` for follow-ups
+   - Sends summary (HTML) + images + "View source" + "New link" buttons
+3. **User sends text (no URL)** → `process_followup`:
+   - Uses stored context (url, content, summary)
+   - `ai_agent.answer_followup()` answers based on page content
+   - Sends reply + "View source" + "New link" buttons
+4. **Commands**: `/start`, `/help`, `/new` (clear context)
 
 ## AI Prompt Format
 
