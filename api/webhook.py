@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from telegram import Bot
 
-from bot import extract_urls, process_link
+from bot import process_chat
 from config import TELEGRAM_BOT_TOKEN
 
 logging.basicConfig(level=logging.INFO)
@@ -24,22 +24,16 @@ def _read_body(h: BaseHTTPRequestHandler) -> bytes:
 
 
 def _handle_update(update_dict: dict) -> None:
-    """Process a single Telegram update (sync wrapper for async)."""
     bot = Bot(token=TELEGRAM_BOT_TOKEN)
     message = update_dict.get("message") or update_dict.get("edited_message")
     if not message:
         return
 
-    text = message.get("text", "")
+    text = (message.get("text") or "").strip()
     chat_id = message["chat"]["id"]
-    urls = extract_urls(text)
 
-    if not urls:
-        asyncio.run(bot.send_message(chat_id, "Please send a valid link (e.g. https://example.com)"))
-        return
-
-    for url in urls:
-        asyncio.run(process_link(bot, chat_id, url))
+    if text and not text.startswith("/"):
+        asyncio.run(process_chat(bot, chat_id, text))
 
 
 class handler(BaseHTTPRequestHandler):

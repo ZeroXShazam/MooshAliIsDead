@@ -31,10 +31,5 @@ POE_MODEL = get_env("POE_MODEL", "gpt-4o")
 # AI provider: "gemini" or "poe"
 AI_PROVIDER = get_env("AI_PROVIDER", "gemini").lower()
 
-# Scraper settings
-MAX_CONTENT_LENGTH = 15000  # chars to send to Gemini
-MAX_IMAGES = 5  # max images to include in analysis
-IMAGE_MAX_SIZE_KB = 500  # skip images larger than this
-
-# Repo URL for bot buttons (replace with your GitHub repo)
+# Repo URL for bot buttons
 REPO_URL = get_env("REPO_URL", "https://github.com/ZeroXShazam/MooshAliIsDead")

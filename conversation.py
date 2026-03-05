@@ -1,31 +1,16 @@
-"""In-memory conversation state per chat."""
+"""Chat history per user."""
 
-from dataclasses import dataclass
-
-from scraper import ScrapedContent
-
-
-@dataclass
-class ChatContext:
-    """Stored context for a chat session."""
-
-    url: str
-    title: str
-    content: ScrapedContent
-    summary: str
+# chat_id -> list of {"role": "user"|"model"|"assistant", "content": str}
+_sessions: dict[int, list[dict]] = {}
 
 
-# chat_id -> ChatContext
-_sessions: dict[int, ChatContext] = {}
+def get_history(chat_id: int) -> list[dict]:
+    return _sessions.get(chat_id, [])
 
 
-def set_context(chat_id: int, url: str, title: str, content: ScrapedContent, summary: str) -> None:
-    _sessions[chat_id] = ChatContext(url=url, title=title, content=content, summary=summary)
+def set_history(chat_id: int, history: list[dict]) -> None:
+    _sessions[chat_id] = history
 
 
-def get_context(chat_id: int) -> ChatContext | None:
-    return _sessions.get(chat_id)
-
-
-def clear_context(chat_id: int) -> None:
+def clear_history(chat_id: int) -> None:
     _sessions.pop(chat_id, None)
