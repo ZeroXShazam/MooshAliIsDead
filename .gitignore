@@ -37,3 +37,4 @@ wheels/
 .cache/
 temp/
 tmp/
+.vercel

@@ -34,6 +34,7 @@ User → main.py (handlers) → bot.py (process_chat) → ai_agent.py (Gemini/Po
 | `conversation.py` | In-memory chat history per user |
 | `config.py` | Env vars |
 | `api/webhook.py` | Vercel serverless webhook |
+| `api/setup_webhook.py` | One-time webhook registration |
 
 ## History
 

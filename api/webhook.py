@@ -32,7 +32,22 @@ def _handle_update(update_dict: dict) -> None:
     text = (message.get("text") or "").strip()
     chat_id = message["chat"]["id"]
 
-    if text and not text.startswith("/"):
+    if text == "/start":
+        asyncio.run(bot.send_message(
+            chat_id,
+            "👋 Hi! I'm your AI assistant. Chat with me about anything.\n\nUse /new to start fresh.",
+        ))
+    elif text == "/help":
+        asyncio.run(bot.send_message(
+            chat_id,
+            "Just chat with me. I remember our history.\n/new — clear and start fresh",
+            parse_mode="HTML",
+        ))
+    elif text == "/new":
+        from conversation import clear_history
+        clear_history(chat_id)
+        asyncio.run(bot.send_message(chat_id, "🆕 Conversation cleared!"))
+    elif text:
         asyncio.run(process_chat(bot, chat_id, text))
 
 

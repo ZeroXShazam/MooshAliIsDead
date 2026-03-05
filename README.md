@@ -27,15 +27,21 @@ pipenv run python main.py
 
 ## Deploy
 
-### Railway
+### Railway (recommended)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new?repository=https://github.com/ZeroXShazam/MooshAliIsDead)
+Runs `python main.py` as a long-lived process. No webhook setup.
 
-### Vercel
+1. [Deploy on Railway](https://railway.app/new?repository=https://github.com/ZeroXShazam/MooshAliIsDead)
+2. Add env vars in Variables
+3. Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ZeroXShazam/MooshAliIsDead)
+### Vercel (webhook)
 
-After deploy, visit `/api/setup_webhook` to register the webhook.
+1. [Deploy with Vercel](https://vercel.com/new/clone?repository-url=https://github.com/ZeroXShazam/MooshAliIsDead)
+2. Add env vars in Project → Settings → Environment Variables
+3. Set webhook — either:
+   - Visit `https://<your-app>.vercel.app/api/setup_webhook`, or
+   - Call: `https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://<your-app>.vercel.app/api/webhook`
 
 ## Commands
 
